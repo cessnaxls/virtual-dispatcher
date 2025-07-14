@@ -6,14 +6,32 @@
 </head>
 <body class="container mt-5">
     <h1 class="mb-4">Trip Rig Dispatcher</h1>
+
     <form method="POST">
+        <div class="mb-3">
+            <label for="airlines" class="form-label">Select Airlines (ICAO Codes):</label>
+            <select id="airlines" name="airlines" multiple class="form-select">
+                {% for code in NA_ICAO_AIRLINES %}
+                <option value="{{ code }}">{{ code }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple airlines, or leave blank to include all.</small>
+        </div>
+
         <button type="submit" class="btn btn-primary">Generate 5-Day Trip</button>
     </form>
+
     {% if trip %}
     <table class="table mt-4">
         <thead>
             <tr>
-                <th>Day</th><th>Airline</th><th>Aircraft</th><th>Departure</th><th>Arrival</th><th>Dep Time</th><th>Arr Time</th>
+                <th>Day</th>
+                <th>Airline</th>
+                <th>Aircraft</th>
+                <th>Departure</th>
+                <th>Arrival</th>
+                <th>Dep Time</th>
+                <th>Arr Time</th>
             </tr>
         </thead>
         <tbody>
