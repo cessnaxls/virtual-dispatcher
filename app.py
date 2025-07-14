@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request
 import random
+import datetime
+
 
 app = Flask(__name__)
 
@@ -59,10 +61,12 @@ ICAO_AIRCRAFT_TYPES = [
     'YS11'
 ]
 
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     trip = []
     airports = ['IND', 'ATL', 'DFW', 'ORD', 'CLT']
+    start_date = datetime.date.today() + datetime.timedelta(days=1)  # starts tomorrow
 
     if request.method == 'POST':
         selected_airlines = request.form.getlist('airlines')
@@ -71,17 +75,28 @@ def home():
         selected_aircraft = request.form.getlist('aircraft')
         aircraft = selected_aircraft if selected_aircraft else ICAO_AIRCRAFT_TYPES
 
-        for day in range(1, 6):
+        for day in range(5):  # 5 days
+            leg_date = start_date + datetime.timedelta(days=day)
             dep_airport = random.choice(airports)
             arr_airport = random.choice([ap for ap in airports if ap != dep_airport])
+
+            dep_hour = random.randint(5, 20)
+            dep_minute = random.randint(0, 59)
+            arr_hour = dep_hour + random.randint(1, 5)  # arrival 1–5 hrs later
+            arr_minute = random.randint(0, 59)
+
+            dep_time = f"{dep_hour:02d}:{dep_minute:02d}"
+            arr_time = f"{arr_hour % 24:02d}:{arr_minute:02d}"
+
             leg = {
-                'day': day,
+                'day': day + 1,
+                'date': leg_date.strftime('%Y-%m-%d'),
                 'airline': random.choice(airlines),
                 'aircraft': random.choice(aircraft),
                 'dep': dep_airport,
                 'arr': arr_airport,
-                'dep_time': f"{random.randint(5, 22)}:{random.randint(0,59):02d}",
-                'arr_time': f"{random.randint(5, 22)}:{random.randint(0,59):02d}"
+                'dep_time': dep_time,
+                'arr_time': arr_time
             }
             trip.append(leg)
 

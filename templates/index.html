@@ -36,6 +36,7 @@
         <thead>
             <tr>
                 <th>Day</th>
+                <th>Date</th>
                 <th>Airline</th>
                 <th>Aircraft</th>
                 <th>Departure</th>
@@ -48,6 +49,7 @@
             {% for leg in trip %}
             <tr>
                 <td>{{ leg.day }}</td>
+                <td>{{ leg.date }}</td>
                 <td>{{ leg.airline }}</td>
                 <td>{{ leg.aircraft }}</td>
                 <td>{{ leg.dep }}</td>
