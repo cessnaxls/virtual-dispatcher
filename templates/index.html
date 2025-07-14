@@ -27,6 +27,21 @@
         </div>
 
         <div class="mb-3">
+            <label for="initial_departure" class="form-label">Initial Departure Point (ICAO code):</label>
+            <input type="text" id="initial_departure" name="initial_departure" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label for="include_airports" class="form-label">Airports to Include (comma-separated ICAO codes):</label>
+            <input type="text" id="include_airports" name="include_airports" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label for="exclude_airports" class="form-label">Airports to Exclude (comma-separated ICAO codes):</label>
+            <input type="text" id="exclude_airports" name="exclude_airports" class="form-control">
+        </div>
+
+        <div class="mb-3">
             <label for="max_legs" class="form-label">Max Legs per Day:</label>
             <select id="max_legs" name="max_legs" class="form-select">
                 {% for n in range(1, 7) %}
@@ -92,7 +107,7 @@
         </thead>
         <tbody>
             {% for leg in trip %}
-            <tr>
+            <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-info{% endif %}">
                 <td>{{ leg.day }}</td>
                 <td>{{ leg.date }}</td>
                 <td>{{ leg.airline }}</td>
