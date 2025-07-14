@@ -67,6 +67,7 @@ def format_minutes(minutes):
     mins = minutes % 60
     return f"{hours:02d}:{mins:02d}"
 
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     trip = []
@@ -96,8 +97,8 @@ def home():
         availability_str = request.form.get('availability')
 
         max_legs = int(request.form.get('max_legs', 4))
-        max_flight_hours = int(request.form.get('max_flight_hours', 8)) * 60  # minutes
-        max_duty_hours = int(request.form.get('max_duty_hours', 10)) * 60     # minutes
+        max_flight_minutes = int(request.form.get('max_flight_hours', 8)) * 60
+        max_duty_minutes = int(request.form.get('max_duty_hours', 10)) * 60
 
         available_dates = set()
         if availability_str:
@@ -127,24 +128,24 @@ def home():
             num_legs = random.randint(1, max_legs)
 
             for _ in range(num_legs):
-                if total_flight >= max_flight_hours or total_duty >= max_duty_hours:
+                if total_flight >= max_flight_minutes or total_duty >= max_duty_minutes:
                     break
 
                 dep_airport = last_arrival
                 arr_airport = random.choice([a for a in airports if a != dep_airport])
 
-                flight_time = random.randint(60, 300)  # flight time in minutes (1–5 hr)
-                turn_time = random.randint(45, 90)     # ground time in minutes
+                flight_time = random.randint(60, 300)  # 1–5 hr in minutes
+                turn_time = random.randint(45, 90)     # 45–90 min ground time
 
-                if total_flight + flight_time > max_flight_hours or total_duty + flight_time + turn_time > max_duty_hours:
+                if total_flight + flight_time > max_flight_minutes or total_duty + flight_time + turn_time > max_duty_minutes:
                     break
 
-                dep_minute_of_day = 360 + total_duty  # 6am + accumulated duty
+                dep_minute_of_day = 360 + total_duty  # ~6am + accumulated duty
                 arr_minute_of_day = dep_minute_of_day + flight_time
 
                 leg = {
                     'day': day_counter,
-                    'date': '',  # skip date in leg rows
+                    'date': '',  # hide date on leg rows
                     'airline': random.choice(airlines),
                     'aircraft': random.choice(aircraft),
                     'dep': dep_airport,
@@ -159,16 +160,16 @@ def home():
                 last_arrival = arr_airport
 
             if legs_today:
-                # Insert summary row BEFORE flights
                 trip.append({
                     'day': day_counter,
                     'date': leg_date.strftime('%Y-%m-%d'),
                     'airline': 'SUMMARY',
-                    'aircraft': '-',
-                    'dep': f'Total legs: {len(legs_today)}',
-                    'arr': f'Flight: {format_minutes(total_flight)}',
-                    'dep_time': f'Duty: {format_minutes(total_duty)}',
-                    'arr_time': ''
+                    'aircraft': '',
+                    'dep': '',
+                    'arr': '',
+                    'dep_time': f'Flight: {format_minutes(total_flight)}',
+                    'arr_time': f'Duty: {format_minutes(total_duty)}',
+                    'total_legs': len(legs_today)
                 })
                 trip.extend(legs_today)
             else:
@@ -176,11 +177,11 @@ def home():
                     'day': day_counter,
                     'date': leg_date.strftime('%Y-%m-%d'),
                     'airline': 'OFF',
-                    'aircraft': '-',
+                    'aircraft': '',
                     'dep': 'OFF DUTY',
-                    'arr': '-',
-                    'dep_time': '-',
-                    'arr_time': '-'
+                    'arr': '',
+                    'dep_time': '',
+                    'arr_time': ''
                 })
 
             day_counter += 1
