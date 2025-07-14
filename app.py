@@ -62,6 +62,11 @@ ICAO_AIRCRAFT_TYPES = [
 ]
 
 
+def format_minutes(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     trip = []
@@ -74,7 +79,6 @@ def home():
         selected_aircraft = request.form.getlist('aircraft')
         aircraft = selected_aircraft if selected_aircraft else ICAO_AIRCRAFT_TYPES
 
-        # NEW inputs
         initial_departure = request.form.get('initial_departure', '').strip().upper()
         include_airports = [a.strip().upper() for a in request.form.get('include_airports', '').split(',') if a.strip()]
         exclude_airports = [a.strip().upper() for a in request.form.get('exclude_airports', '').split(',') if a.strip()]
@@ -87,18 +91,15 @@ def home():
         if initial_departure and initial_departure not in airports:
             airports.append(initial_departure)
 
-        # Get date inputs
         start_date_str = request.form.get('start_date')
         end_date_str = request.form.get('end_date')
         availability_str = request.form.get('availability')
 
-        # Get limits
         max_legs = int(request.form.get('max_legs', 4))
-        max_flight_hours = int(request.form.get('max_flight_hours', 8))
-        max_duty_hours = int(request.form.get('max_duty_hours', 10))
+        max_flight_hours = int(request.form.get('max_flight_hours', 8)) * 60  # minutes
+        max_duty_hours = int(request.form.get('max_duty_hours', 10)) * 60     # minutes
 
         available_dates = set()
-
         if availability_str:
             ranges = availability_str.split(',')
             for part in ranges:
@@ -132,52 +133,51 @@ def home():
                 dep_airport = last_arrival
                 arr_airport = random.choice([a for a in airports if a != dep_airport])
 
-                flight_time = random.randint(1, 5)  # in hours
-                duty_time = flight_time + 1        # add ground/prep time
+                flight_time = random.randint(60, 300)  # flight time in minutes (1–5 hr)
+                turn_time = random.randint(45, 90)     # ground time in minutes
 
-                if total_flight + flight_time > max_flight_hours or total_duty + duty_time > max_duty_hours:
+                if total_flight + flight_time > max_flight_hours or total_duty + flight_time + turn_time > max_duty_hours:
                     break
 
-                dep_hour = 6 + total_duty  # approx 6am start + stacked legs
-                arr_hour = dep_hour + flight_time
-                dep_minute = random.randint(0, 59)
-                arr_minute = random.randint(0, 59)
+                dep_minute_of_day = 360 + total_duty  # 6am + accumulated duty
+                arr_minute_of_day = dep_minute_of_day + flight_time
 
                 leg = {
                     'day': day_counter,
-                    'date': leg_date.strftime('%Y-%m-%d'),
+                    'date': '',  # skip date in leg rows
                     'airline': random.choice(airlines),
                     'aircraft': random.choice(aircraft),
                     'dep': dep_airport,
                     'arr': arr_airport,
-                    'dep_time': f"{dep_hour % 24:02d}:{dep_minute:02d}",
-                    'arr_time': f"{arr_hour % 24:02d}:{arr_minute:02d}"
+                    'dep_time': format_minutes(dep_minute_of_day),
+                    'arr_time': format_minutes(arr_minute_of_day)
                 }
                 legs_today.append(leg)
 
                 total_flight += flight_time
-                total_duty += duty_time
+                total_duty += flight_time + turn_time
                 last_arrival = arr_airport
 
             if legs_today:
-                trip.extend(legs_today)
+                # Insert summary row BEFORE flights
                 trip.append({
                     'day': day_counter,
                     'date': leg_date.strftime('%Y-%m-%d'),
                     'airline': 'SUMMARY',
                     'aircraft': '-',
                     'dep': f'Total legs: {len(legs_today)}',
-                    'arr': f'Flight: {total_flight}h',
-                    'dep_time': f'Duty: {total_duty}h',
+                    'arr': f'Flight: {format_minutes(total_flight)}',
+                    'dep_time': f'Duty: {format_minutes(total_duty)}',
                     'arr_time': ''
                 })
+                trip.extend(legs_today)
             else:
                 trip.append({
                     'day': day_counter,
                     'date': leg_date.strftime('%Y-%m-%d'),
                     'airline': 'OFF',
                     'aircraft': '-',
-                    'dep': '-',
+                    'dep': 'OFF DUTY',
                     'arr': '-',
                     'dep_time': '-',
                     'arr_time': '-'

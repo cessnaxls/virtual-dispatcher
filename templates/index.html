@@ -107,10 +107,10 @@
         </thead>
         <tbody>
             {% for leg in trip %}
-            <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-info{% endif %}">
+            <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
                 <td>{{ leg.day }}</td>
                 <td>{{ leg.date }}</td>
-                <td>{{ leg.airline }}</td>
+                <td>{% if leg.airline == 'SUMMARY' or leg.airline == 'OFF' %}{% else %}{{ leg.airline }}{% endif %}</td>
                 <td>{{ leg.aircraft }}</td>
                 <td>{{ leg.dep }}</td>
                 <td>{{ leg.arr }}</td>
