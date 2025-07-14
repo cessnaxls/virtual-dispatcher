@@ -177,12 +177,15 @@ def home():
                     'day': day_counter,
                     'date': leg_date.strftime('%Y-%m-%d'),
                     'airline': 'OFF',
-                    'aircraft': '',
-                    'dep': 'OFF DUTY',
-                    'arr': '',
-                    'dep_time': '',
-                    'arr_time': ''
+                    'aircraft': 'OFF',
+                    'dep': 'OFF',
+                    'arr': 'OFF',
+                    'dep_time': 'OFF',
+                    'arr_time': 'OFF'
                 })
+    
+                
+
 
             day_counter += 1
 
