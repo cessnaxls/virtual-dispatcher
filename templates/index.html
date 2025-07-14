@@ -18,6 +18,16 @@
             <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple airlines, or leave blank to include all.</small>
         </div>
 
+        <div class="mb-3">
+            <label for="aircraft" class="form-label">Select Aircraft Types (ICAO Codes):</label>
+            <select id="aircraft" name="aircraft" multiple class="form-select">
+                {% for code in ICAO_AIRCRAFT_TYPES %}
+                <option value="{{ code }}">{{ code }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple aircraft, or leave blank to include all.</small>
+        </div>
+
         <button type="submit" class="btn btn-primary">Generate 5-Day Trip</button>
     </form>
 
