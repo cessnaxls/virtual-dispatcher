@@ -66,7 +66,6 @@ ICAO_AIRCRAFT_TYPES = [
 def home():
     trip = []
     airports = ['IND', 'ATL', 'DFW', 'ORD', 'CLT']
-    start_date = datetime.date.today() + datetime.timedelta(days=1)  # starts tomorrow
 
     if request.method == 'POST':
         selected_airlines = request.form.getlist('airlines')
@@ -75,30 +74,91 @@ def home():
         selected_aircraft = request.form.getlist('aircraft')
         aircraft = selected_aircraft if selected_aircraft else ICAO_AIRCRAFT_TYPES
 
-        for day in range(5):  # 5 days
-            leg_date = start_date + datetime.timedelta(days=day)
-            dep_airport = random.choice(airports)
-            arr_airport = random.choice([ap for ap in airports if ap != dep_airport])
+        # Get date inputs
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        availability_str = request.form.get('availability')
 
-            dep_hour = random.randint(5, 20)
-            dep_minute = random.randint(0, 59)
-            arr_hour = dep_hour + random.randint(1, 5)  # arrival 1–5 hrs later
-            arr_minute = random.randint(0, 59)
+        # Get limit inputs
+        max_legs = int(request.form.get('max_legs', 4))
+        max_flight_hours = int(request.form.get('max_flight_hours', 8))
+        max_duty_hours = int(request.form.get('max_duty_hours', 10))
 
-            dep_time = f"{dep_hour:02d}:{dep_minute:02d}"
-            arr_time = f"{arr_hour % 24:02d}:{arr_minute:02d}"
+        available_dates = set()
 
-            leg = {
-                'day': day + 1,
-                'date': leg_date.strftime('%Y-%m-%d'),
-                'airline': random.choice(airlines),
-                'aircraft': random.choice(aircraft),
-                'dep': dep_airport,
-                'arr': arr_airport,
-                'dep_time': dep_time,
-                'arr_time': arr_time
-            }
-            trip.append(leg)
+        # Parse custom availability ranges if provided
+        if availability_str:
+            ranges = availability_str.split(',')
+            for part in ranges:
+                try:
+                    start_str, end_str = part.strip().split(' to ')
+                    start = datetime.datetime.strptime(start_str.strip(), '%Y-%m-%d').date()
+                    end = datetime.datetime.strptime(end_str.strip(), '%Y-%m-%d').date()
+                    for n in range((end - start).days + 1):
+                        available_dates.add(start + datetime.timedelta(days=n))
+                except Exception as e:
+                    print(f"Error parsing range '{part}': {e}")
+
+        # Else, fallback to start and end date block
+        elif start_date_str and end_date_str:
+            start = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            for n in range((end - start).days + 1):
+                available_dates.add(start + datetime.timedelta(days=n))
+
+        # Generate trip for available dates (or mark as OFF if no availability)
+        day_counter = 1
+        for leg_date in sorted(available_dates):
+            num_legs = random.randint(1, max_legs)
+            total_flight_hours = 0
+            total_duty_hours = 0
+
+            for leg_num in range(1, num_legs + 1):
+                if total_flight_hours >= max_flight_hours or total_duty_hours >= max_duty_hours:
+                    break
+
+                dep_airport = random.choice(airports)
+                arr_airport = random.choice([ap for ap in airports if ap != dep_airport])
+
+                flight_time = random.randint(1, 5)  # flight time in hours
+                duty_time = flight_time + 1  # +1 hr per leg for prep, taxi, etc.
+
+                if total_flight_hours + flight_time > max_flight_hours or total_duty_hours + duty_time > max_duty_hours:
+                    break
+
+                dep_hour = 6 + total_duty_hours  # start day at ~6am, stack legs
+                dep_minute = random.randint(0, 59)
+                arr_hour = dep_hour + flight_time
+                arr_minute = random.randint(0, 59)
+
+                leg = {
+                    'day': day_counter,
+                    'date': leg_date.strftime('%Y-%m-%d'),
+                    'airline': random.choice(airlines),
+                    'aircraft': random.choice(aircraft),
+                    'dep': dep_airport,
+                    'arr': arr_airport,
+                    'dep_time': f"{dep_hour % 24:02d}:{dep_minute:02d}",
+                    'arr_time': f"{arr_hour % 24:02d}:{arr_minute:02d}"
+                }
+                trip.append(leg)
+
+                total_flight_hours += flight_time
+                total_duty_hours += duty_time
+
+            if num_legs == 0:
+                trip.append({
+                    'day': day_counter,
+                    'date': leg_date.strftime('%Y-%m-%d'),
+                    'airline': 'OFF',
+                    'aircraft': '-',
+                    'dep': '-',
+                    'arr': '-',
+                    'dep_time': '-',
+                    'arr_time': '-'
+                })
+
+            day_counter += 1
 
     return render_template('index.html', trip=trip,
                            NA_ICAO_AIRLINES=NA_ICAO_AIRLINES,
