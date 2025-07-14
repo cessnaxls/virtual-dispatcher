@@ -8,7 +8,85 @@
     <h1 class="mb-4">Trip Rig Dispatcher</h1>
 
     <form method="POST">
-        <!-- [form fields unchanged] -->
+        <!-- Date inputs -->
+        <div class="mb-3">
+            <label for="start_date" class="form-label">Available From (Start Date):</label>
+            <input type="date" id="start_date" name="start_date" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="end_date" class="form-label">Available Until (End Date):</label>
+            <input type="date" id="end_date" name="end_date" class="form-control">
+        </div>
+
+        <!-- Custom ranges -->
+        <div class="mb-3">
+            <label for="availability" class="form-label">
+                Or Enter Custom Date Ranges (e.g., 2025-08-01 to 2025-08-10, 2025-08-15 to 2025-08-20):
+            </label>
+            <input type="text" id="availability" name="availability" class="form-control">
+            <small class="text-muted">Separate ranges with commas. Format: YYYY-MM-DD to YYYY-MM-DD.</small>
+        </div>
+
+        <!-- Airport filters -->
+        <div class="mb-3">
+            <label for="initial_departure" class="form-label">Initial Departure Point (ICAO code):</label>
+            <input type="text" id="initial_departure" name="initial_departure" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="include_airports" class="form-label">Airports to Include (comma-separated ICAO codes):</label>
+            <input type="text" id="include_airports" name="include_airports" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="exclude_airports" class="form-label">Airports to Exclude (comma-separated ICAO codes):</label>
+            <input type="text" id="exclude_airports" name="exclude_airports" class="form-control">
+        </div>
+
+        <!-- Limits -->
+        <div class="mb-3">
+            <label for="max_legs" class="form-label">Max Legs per Day:</label>
+            <select id="max_legs" name="max_legs" class="form-select">
+                {% for n in range(1, 7) %}
+                <option value="{{ n }}">{{ n }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="max_flight_hours" class="form-label">Max Flight Hours per Day:</label>
+            <select id="max_flight_hours" name="max_flight_hours" class="form-select">
+                {% for n in range(4, 13) %}
+                <option value="{{ n }}">{{ n }} hrs</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="max_duty_hours" class="form-label">Max Duty Hours per Day:</label>
+            <select id="max_duty_hours" name="max_duty_hours" class="form-select">
+                {% for n in range(6, 17) %}
+                <option value="{{ n }}">{{ n }} hrs</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Airline & aircraft selection -->
+        <div class="mb-3">
+            <label for="airlines" class="form-label">Select Airlines (ICAO Codes):</label>
+            <select id="airlines" name="airlines" multiple class="form-select">
+                {% for code in NA_ICAO_AIRLINES %}
+                <option value="{{ code }}">{{ code }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple airlines, or leave blank to include all.</small>
+        </div>
+        <div class="mb-3">
+            <label for="aircraft" class="form-label">Select Aircraft Types (ICAO Codes):</label>
+            <select id="aircraft" name="aircraft" multiple class="form-select">
+                {% for code in ICAO_AIRCRAFT_TYPES %}
+                <option value="{{ code }}">{{ code }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple aircraft, or leave blank to include all.</small>
+        </div>
+
         <button type="submit" class="btn btn-primary">Generate Trip Schedule</button>
     </form>
 
@@ -18,12 +96,12 @@
             <tr>
                 <th>Day</th>
                 <th>Date</th>
-                <th>Airline</th>
+                <th>Airline / Total Legs</th>
                 <th>Aircraft</th>
                 <th>Departure</th>
                 <th>Arrival</th>
-                <th>Dep Time</th>
-                <th>Arr Time</th>
+                <th>Flight Time</th>
+                <th>Duty Time</th>
             </tr>
         </thead>
         <tbody>
@@ -31,7 +109,6 @@
             <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
                 <td>{{ leg.day }}</td>
                 <td>{{ leg.date }}</td>
-
                 <td>
                     {% if leg.airline == 'SUMMARY' %}
                         Total legs: {{ leg.total_legs }}
@@ -41,42 +118,25 @@
                         {{ leg.airline }}
                     {% endif %}
                 </td>
-
                 <td>
                     {% if leg.airline == 'SUMMARY' %}
-                        <!-- empty -->
+                        ----
                     {% else %}
                         {{ leg.aircraft }}
                     {% endif %}
                 </td>
-
+                <td>{{ leg.dep }}</td>
+                <td>{{ leg.arr }}</td>
                 <td>
                     {% if leg.airline == 'SUMMARY' %}
-                        <!-- empty -->
-                    {% else %}
-                        {{ leg.dep }}
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if leg.airline == 'SUMMARY' %}
-                        <!-- empty -->
-                    {% else %}
-                        {{ leg.arr }}
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if leg.airline == 'SUMMARY' %}
-                        Flight: {{ leg.total_flight }}
+                        {{ leg.dep_time }}
                     {% else %}
                         {{ leg.dep_time }}
                     {% endif %}
                 </td>
-
                 <td>
                     {% if leg.airline == 'SUMMARY' %}
-                        Duty: {{ leg.total_duty }}
+                        {{ leg.arr_time }}
                     {% else %}
                         {{ leg.arr_time }}
                     {% endif %}
