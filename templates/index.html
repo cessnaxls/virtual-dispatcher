@@ -110,8 +110,20 @@
             <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
                 <td>{{ leg.day }}</td>
                 <td>{{ leg.date }}</td>
-                <td>{% if leg.airline == 'SUMMARY' or leg.airline == 'OFF' %}{% else %}{{ leg.airline }}{% endif %}</td>
-                <td>{{ leg.aircraft }}</td>
+                <td>
+                    {% if leg.airline == 'SUMMARY' %}
+                        ----
+                    {% else %}
+                        {{ leg.airline }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if leg.airline == 'SUMMARY' %}
+                        ----
+                    {% else %}
+                        {{ leg.aircraft }}
+                    {% endif %}
+                </td>
                 <td>{{ leg.dep }}</td>
                 <td>{{ leg.arr }}</td>
                 <td>{{ leg.dep_time }}</td>
