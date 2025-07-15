@@ -58,6 +58,34 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="mb-3">
+            <label for="max_duty_hours" class="form-label">Max Duty Hours per Day:</label>
+            <select id="max_duty_hours" name="max_duty_hours" class="form-select">
+                {% for n in range(6, 17) %}
+                <option value="{{ n }}">{{ n }} hrs</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Airline & aircraft selection -->
+        <div class="mb-3">
+            <label for="airlines" class="form-label">Select Airlines (ICAO Codes):</label>
+            <select id="airlines" name="airlines" multiple class="form-select">
+                {% for code in NA_ICAO_AIRLINES %}
+                <option value="{{ code }}">{{ code }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple airlines, or leave blank to include all.</small>
+        </div>
+        <div class="mb-3">
+            <label for="aircraft" class="form-label">Select Aircraft Types (ICAO Codes):</label>
+            <select id="aircraft" name="aircraft" multiple class="form-select">
+                {% for code in ICAO_AIRCRAFT_TYPES %}
+                <option value="{{ code }}">{{ code }}</option>
+                {% endfor %}
+            </select>
+            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple aircraft, or leave blank to include all.</small>
+        </div>
 
         <button type="submit" class="btn btn-primary">Generate Trip Schedule</button>
     </form>
@@ -75,6 +103,10 @@
             <p><strong>Rolling 28-Day Flight Time (FAA):</strong> {{ summary.rolling_28day }}</p>
             <p><strong>Total OFF Days:</strong> {{ summary.off_days }}</p>
         </div>
+    </div>
+
+    <div class="text-end">
+        <a href="/export_pdf" class="btn btn-success mt-2">Download Schedule as PDF</a>
     </div>
     {% endif %}
 

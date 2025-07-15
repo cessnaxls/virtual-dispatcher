@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
+from weasyprint import HTML
 import random
 import datetime
-
+import io
 
 app = Flask(__name__)
 
@@ -61,15 +62,19 @@ ICAO_AIRCRAFT_TYPES = [
     'YS11'
 ]
 
-
 def format_minutes(minutes):
     hours = minutes // 60
     mins = minutes % 60
     return f"{hours:02d}:{mins:02d}"
 
+# STORE last trip + summary globally
+last_trip = []
+last_summary = {}
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    global last_trip, last_summary
+
     trip = []
     airports = ['IND', 'ATL', 'DFW', 'ORD', 'CLT']
 
@@ -127,7 +132,7 @@ def home():
         total_off_days = 0
 
         prior_day_end_time = None
-        day_flight_times = {}  # {date: minutes}
+        day_flight_times = {}
 
         for leg_date in sorted(available_dates):
             legs_today = []
@@ -135,7 +140,6 @@ def home():
             num_legs = random.randint(1, max_legs)
             max_duty_for_day = 840 if num_legs <= 4 else 720
 
-            # Calculate rolling past days
             past_7 = [leg_date - datetime.timedelta(days=i) for i in range(1, 8)]
             past_28 = [leg_date - datetime.timedelta(days=i) for i in range(1, 29)]
             rolling_7day = sum(day_flight_times.get(d, 0) for d in past_7)
@@ -158,7 +162,7 @@ def home():
                 day_counter += 1
                 continue
 
-            dep_minute_of_day = 360  # ~6am
+            dep_minute_of_day = 360
 
             for _ in range(num_legs):
                 if total_flight >= max_flight_minutes:
@@ -176,7 +180,6 @@ def home():
                 arr_airport = random.choice(arr_choices)
                 flight_time = random.randint(60, 300)
 
-                # Check rolling FAA limits
                 if (rolling_7day + total_flight + flight_time > FAA_7DAY_LIMIT or
                     rolling_28day + total_flight + flight_time > FAA_28DAY_LIMIT):
                     break
@@ -196,7 +199,7 @@ def home():
                 legs_today.append(leg)
 
                 total_flight += flight_time
-                dep_minute_of_day = arr_minute_of_day + 60  # add ~1h turn
+                dep_minute_of_day = arr_minute_of_day + 60
                 last_arrival = arr_airport
 
             if legs_today:
@@ -204,12 +207,7 @@ def home():
                 total_flight_minutes_all += total_flight
                 day_flight_times[leg_date] = total_flight
 
-                # Calculate prior rest
-                if prior_day_end_time is not None:
-                    prior_rest = max(0, (24 * 60 + 360) - prior_day_end_time)
-                else:
-                    prior_rest = 720  # first day
-
+                prior_rest = max(0, (24 * 60 + 360) - prior_day_end_time) if prior_day_end_time else 720
                 prior_day_end_time = arr_minute_of_day
 
                 trip.append({
@@ -253,6 +251,10 @@ def home():
             'off_days': total_off_days
         }
 
+        # STORE for PDF export
+        last_trip = trip
+        last_summary = summary
+
     else:
         summary = None
 
@@ -260,3 +262,10 @@ def home():
                            NA_ICAO_AIRLINES=NA_ICAO_AIRLINES,
                            ICAO_AIRCRAFT_TYPES=ICAO_AIRCRAFT_TYPES,
                            summary=summary)
+
+# PDF EXPORT ROUTE
+@app.route('/export_pdf')
+def export_pdf():
+    html = render_template('pdf_template.html', trip=last_trip, summary=last_summary)
+    pdf = HTML(string=html).write_pdf()
+    return send_file(io.BytesIO(pdf), mimetype='application/pdf', as_attachment=True, download_name='trip_schedule.pdf')
