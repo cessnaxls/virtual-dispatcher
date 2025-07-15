@@ -73,6 +73,9 @@ def home():
     trip = []
     airports = ['IND', 'ATL', 'DFW', 'ORD', 'CLT']
 
+    FAA_7DAY_LIMIT = 1800  # 30h
+    FAA_28DAY_LIMIT = 6000  # 100h
+
     if request.method == 'POST':
         selected_airlines = request.form.getlist('airlines')
         airlines = selected_airlines if selected_airlines else NA_ICAO_AIRLINES
@@ -123,7 +126,8 @@ def home():
         total_flight_minutes_all = 0
         total_off_days = 0
 
-        prior_day_end_time = None  # last day end time
+        prior_day_end_time = None
+        day_flight_times = {}  # {date: minutes}
 
         for leg_date in sorted(available_dates):
             legs_today = []
@@ -131,7 +135,30 @@ def home():
             num_legs = random.randint(1, max_legs)
             max_duty_for_day = 840 if num_legs <= 4 else 720
 
-            dep_minute_of_day = 360  # start ~6am
+            # Calculate rolling past days
+            past_7 = [leg_date - datetime.timedelta(days=i) for i in range(1, 8)]
+            past_28 = [leg_date - datetime.timedelta(days=i) for i in range(1, 29)]
+            rolling_7day = sum(day_flight_times.get(d, 0) for d in past_7)
+            rolling_28day = sum(day_flight_times.get(d, 0) for d in past_28)
+
+            if rolling_7day >= FAA_7DAY_LIMIT or rolling_28day >= FAA_28DAY_LIMIT:
+                trip.append({
+                    'day': day_counter,
+                    'date': leg_date.strftime('%Y-%m-%d'),
+                    'airline': 'OFF',
+                    'aircraft': 'OFF',
+                    'dep': 'OFF',
+                    'arr': 'OFF',
+                    'dep_time': 'OFF',
+                    'arr_time': 'OFF'
+                })
+                total_off_days += 1
+                prior_day_end_time = None
+                day_flight_times[leg_date] = 0
+                day_counter += 1
+                continue
+
+            dep_minute_of_day = 360  # ~6am
 
             for _ in range(num_legs):
                 if total_flight >= max_flight_minutes:
@@ -149,7 +176,9 @@ def home():
                 arr_airport = random.choice(arr_choices)
                 flight_time = random.randint(60, 300)
 
-                if total_flight + flight_time > max_flight_minutes:
+                # Check rolling FAA limits
+                if (rolling_7day + total_flight + flight_time > FAA_7DAY_LIMIT or
+                    rolling_28day + total_flight + flight_time > FAA_28DAY_LIMIT):
                     break
 
                 arr_minute_of_day = dep_minute_of_day + flight_time
@@ -167,18 +196,21 @@ def home():
                 legs_today.append(leg)
 
                 total_flight += flight_time
-                dep_minute_of_day = arr_minute_of_day + 60  # add ~1h turn time
+                dep_minute_of_day = arr_minute_of_day + 60  # add ~1h turn
                 last_arrival = arr_airport
 
             if legs_today:
                 total_legs_count += len(legs_today)
                 total_flight_minutes_all += total_flight
+                day_flight_times[leg_date] = total_flight
 
-                # Calculate prior rest:
+                # Calculate prior rest
                 if prior_day_end_time is not None:
-                    prior_rest_minutes = max(0, (360 + 24 * 60) - prior_day_end_time)  # next day 6am start - last day end
+                    prior_rest = max(0, (24 * 60 + 360) - prior_day_end_time)
                 else:
-                    prior_rest_minutes = 720  # first day, assume 12h
+                    prior_rest = 720  # first day
+
+                prior_day_end_time = arr_minute_of_day
 
                 trip.append({
                     'day': day_counter,
@@ -188,14 +220,15 @@ def home():
                     'dep': '',
                     'arr': '',
                     'dep_time': f'Flight: {format_minutes(total_flight)}',
-                    'arr_time': f'Duty: {format_minutes(total_flight + 60 * len(legs_today))}',
+                    'arr_time': f'Duty: {format_minutes(total_flight + len(legs_today) * 60)}',
                     'total_legs': len(legs_today),
-                    'prior_rest': format_minutes(prior_rest_minutes)
+                    'prior_rest': format_minutes(prior_rest)
                 })
-
                 trip.extend(legs_today)
-                prior_day_end_time = arr_minute_of_day
             else:
+                prior_day_end_time = None
+                total_off_days += 1
+                day_flight_times[leg_date] = 0
                 trip.append({
                     'day': day_counter,
                     'date': leg_date.strftime('%Y-%m-%d'),
@@ -206,8 +239,6 @@ def home():
                     'dep_time': 'OFF',
                     'arr_time': 'OFF'
                 })
-                prior_day_end_time = None  # reset if off day
-                total_off_days += 1
 
             day_counter += 1
 
@@ -216,7 +247,10 @@ def home():
         summary = {
             'total_legs': total_legs_count,
             'total_flight': format_minutes(total_flight_minutes_all),
-            'total_duty': format_minutes(total_duty_minutes_all)
+            'total_duty': format_minutes(total_duty_minutes_all),
+            'rolling_7day': format_minutes(sum(day_flight_times.get(d, 0) for d in past_7)),
+            'rolling_28day': format_minutes(sum(day_flight_times.get(d, 0) for d in past_28)),
+            'off_days': total_off_days
         }
 
     else:

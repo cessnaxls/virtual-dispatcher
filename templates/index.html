@@ -58,34 +58,6 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="mb-3">
-            <label for="max_duty_hours" class="form-label">Max Duty Hours per Day:</label>
-            <select id="max_duty_hours" name="max_duty_hours" class="form-select">
-                {% for n in range(6, 17) %}
-                <option value="{{ n }}">{{ n }} hrs</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Airline & aircraft selection -->
-        <div class="mb-3">
-            <label for="airlines" class="form-label">Select Airlines (ICAO Codes):</label>
-            <select id="airlines" name="airlines" multiple class="form-select">
-                {% for code in NA_ICAO_AIRLINES %}
-                <option value="{{ code }}">{{ code }}</option>
-                {% endfor %}
-            </select>
-            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple airlines, or leave blank to include all.</small>
-        </div>
-        <div class="mb-3">
-            <label for="aircraft" class="form-label">Select Aircraft Types (ICAO Codes):</label>
-            <select id="aircraft" name="aircraft" multiple class="form-select">
-                {% for code in ICAO_AIRCRAFT_TYPES %}
-                <option value="{{ code }}">{{ code }}</option>
-                {% endfor %}
-            </select>
-            <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple aircraft, or leave blank to include all.</small>
-        </div>
 
         <button type="submit" class="btn btn-primary">Generate Trip Schedule</button>
     </form>
@@ -96,66 +68,67 @@
             <strong>Summary</strong>
         </div>
         <div class="card-body">
-            <p>Total Legs: {{ summary.total_legs }}</p>
-            <p>Total Flight Time: {{ summary.total_flight }}</p>
-            <p>Total Duty Time: {{ summary.total_duty }}</p>
+            <p><strong>Total Legs:</strong> {{ summary.total_legs }}</p>
+            <p><strong>Total Flight Time:</strong> {{ summary.total_flight }}</p>
+            <p><strong>Total Duty Time:</strong> {{ summary.total_duty }}</p>
+            <p><strong>Rolling 7-Day Flight Time (FAA):</strong> {{ summary.rolling_7day }}</p>
+            <p><strong>Rolling 28-Day Flight Time (FAA):</strong> {{ summary.rolling_28day }}</p>
+            <p><strong>Total OFF Days:</strong> {{ summary.off_days }}</p>
         </div>
     </div>
     {% endif %}
 
     {% if trip %}
-	<table class="table mt-4">
-		<thead>
-			<tr>
-				<th>Day</th>
-				<th>Date</th>
-				<th>Airline / Total Legs</th>
-				<th>Aircraft</th>
-				<th>Departure</th>
-				<th>Arrival</th>
-				<th>Flight Time</th>
-				<th>Duty Time</th>
-				<th>Prior Rest</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for leg in trip %}
-			<tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
-				<td>{{ leg.day }}</td>
-				<td>{{ leg.date }}</td>
-				<td>
-					{% if leg.airline == 'SUMMARY' %}
-						Total legs: {{ leg.total_legs }}
-					{% elif leg.airline == 'OFF' %}
-						OFF DUTY
-					{% else %}
-						{{ leg.airline }}
-					{% endif %}
-				</td>
-				<td>
-					{% if leg.airline == 'SUMMARY' %}
-						<!-- blank -->
-					{% elif leg.airline == 'OFF' %}
-						OFF
-					{% else %}
-						{{ leg.aircraft }}
-					{% endif %}
-				</td>
-				<td>{{ leg.dep }}</td>
-				<td>{{ leg.arr }}</td>
-				<td>{{ leg.dep_time }}</td>
-				<td>{{ leg.arr_time }}</td>
-				<td>
-					{% if leg.airline == 'SUMMARY' %}
-						{{ leg.prior_rest }}
-					{% else %}
-						<!-- blank -->
-					{% endif %}
-				</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
+    <table class="table mt-4">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Date</th>
+                <th>Airline / Total Legs</th>
+                <th>Aircraft</th>
+                <th>Departure</th>
+                <th>Arrival</th>
+                <th>Flight Time</th>
+                <th>Duty Time</th>
+                <th>Prior Rest</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for leg in trip %}
+            <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
+                <td>{{ leg.day }}</td>
+                <td>{{ leg.date }}</td>
+                <td>
+                    {% if leg.airline == 'SUMMARY' %}
+                        Total legs: {{ leg.total_legs }}
+                    {% elif leg.airline == 'OFF' %}
+                        OFF DUTY
+                    {% else %}
+                        {{ leg.airline }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if leg.airline == 'SUMMARY' %}
+                        <!-- blank -->
+                    {% elif leg.airline == 'OFF' %}
+                        OFF
+                    {% else %}
+                        {{ leg.aircraft }}
+                    {% endif %}
+                </td>
+                <td>{{ leg.dep }}</td>
+                <td>{{ leg.arr }}</td>
+                <td>{{ leg.dep_time }}</td>
+                <td>{{ leg.arr_time }}</td>
+                <td>
+                    {% if leg.airline == 'SUMMARY' %}
+                        {{ leg.prior_rest }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% endif %}
 </body>
 </html>
