@@ -127,17 +127,28 @@ def home():
             total_duty = 0
             num_legs = random.randint(1, max_legs)
 
+            # Apply duty limits: 14h if ≤4 legs, 12h if ≥5 legs
+            max_duty_for_day = 840 if num_legs <= 4 else 720  # minutes
+
             for _ in range(num_legs):
-                if total_flight >= max_flight_minutes or total_duty >= max_duty_minutes:
+                if total_flight >= max_flight_minutes or total_duty >= max_duty_for_day:
                     break
 
                 dep_airport = last_arrival
-                arr_airport = random.choice([a for a in airports if a != dep_airport])
+                arr_choices = [a for a in airports if a != dep_airport]
+                if include_airports:
+                    arr_choices = [a for a in arr_choices if a in include_airports]
+                if exclude_airports:
+                    arr_choices = [a for a in arr_choices if a not in exclude_airports]
+
+                if not arr_choices:
+                    arr_choices = airports
+
+                arr_airport = random.choice(arr_choices)
 
                 flight_time = random.randint(60, 300)  # 1–5 hr in minutes
-                turn_time = random.randint(45, 90)     # 45–90 min ground time
 
-                if total_flight + flight_time > max_flight_minutes or total_duty + flight_time + turn_time > max_duty_minutes:
+                if total_flight + flight_time > max_flight_minutes or total_duty + flight_time > max_duty_for_day:
                     break
 
                 dep_minute_of_day = 360 + total_duty  # ~6am + accumulated duty
@@ -145,7 +156,7 @@ def home():
 
                 leg = {
                     'day': day_counter,
-                    'date': '',  # hide date on leg rows
+                    'date': '',  # blank in detail rows
                     'airline': random.choice(airlines),
                     'aircraft': random.choice(aircraft),
                     'dep': dep_airport,
@@ -156,7 +167,7 @@ def home():
                 legs_today.append(leg)
 
                 total_flight += flight_time
-                total_duty += flight_time + turn_time
+                total_duty += flight_time
                 last_arrival = arr_airport
 
             if legs_today:
@@ -183,9 +194,6 @@ def home():
                     'dep_time': 'OFF',
                     'arr_time': 'OFF'
                 })
-    
-                
-
 
             day_counter += 1
 
