@@ -104,50 +104,58 @@
     {% endif %}
 
     {% if trip %}
-    <table class="table mt-4">
-        <thead>
-            <tr>
-                <th>Day</th>
-                <th>Date</th>
-                <th>Airline / Total Legs</th>
-                <th>Aircraft</th>
-                <th>Departure</th>
-                <th>Arrival</th>
-                <th>Flight Time</th>
-                <th>Duty Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for leg in trip %}
-            <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
-                <td>{{ leg.day }}</td>
-                <td>{{ leg.date }}</td>
-                <td>
-                    {% if leg.airline == 'SUMMARY' %}
-                        Total legs: {{ leg.total_legs }}
-                    {% elif leg.airline == 'OFF' %}
-                        OFF DUTY
-                    {% else %}
-                        {{ leg.airline }}
-                    {% endif %}
-                </td>
-                <td>
-                    {% if leg.airline == 'SUMMARY' %}
-                        <!-- blank -->
-                    {% elif leg.airline == 'OFF' %}
-                        OFF
-                    {% else %}
-                        {{ leg.aircraft }}
-                    {% endif %}
-                </td>
-                <td>{{ leg.dep }}</td>
-                <td>{{ leg.arr }}</td>
-                <td>{{ leg.dep_time }}</td>
-                <td>{{ leg.arr_time }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+	<table class="table mt-4">
+		<thead>
+			<tr>
+				<th>Day</th>
+				<th>Date</th>
+				<th>Airline / Total Legs</th>
+				<th>Aircraft</th>
+				<th>Departure</th>
+				<th>Arrival</th>
+				<th>Flight Time</th>
+				<th>Duty Time</th>
+				<th>Prior Rest</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for leg in trip %}
+			<tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
+				<td>{{ leg.day }}</td>
+				<td>{{ leg.date }}</td>
+				<td>
+					{% if leg.airline == 'SUMMARY' %}
+						Total legs: {{ leg.total_legs }}
+					{% elif leg.airline == 'OFF' %}
+						OFF DUTY
+					{% else %}
+						{{ leg.airline }}
+					{% endif %}
+				</td>
+				<td>
+					{% if leg.airline == 'SUMMARY' %}
+						<!-- blank -->
+					{% elif leg.airline == 'OFF' %}
+						OFF
+					{% else %}
+						{{ leg.aircraft }}
+					{% endif %}
+				</td>
+				<td>{{ leg.dep }}</td>
+				<td>{{ leg.arr }}</td>
+				<td>{{ leg.dep_time }}</td>
+				<td>{{ leg.arr_time }}</td>
+				<td>
+					{% if leg.airline == 'SUMMARY' %}
+						{{ leg.prior_rest }}
+					{% else %}
+						<!-- blank -->
+					{% endif %}
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
     {% endif %}
 </body>
 </html>

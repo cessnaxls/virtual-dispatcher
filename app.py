@@ -88,7 +88,6 @@ def home():
             airports = list(set(airports + include_airports))
         if exclude_airports:
             airports = [a for a in airports if a not in exclude_airports]
-
         if initial_departure and initial_departure not in airports:
             airports.append(initial_departure)
 
@@ -122,16 +121,22 @@ def home():
 
         total_legs_count = 0
         total_flight_minutes_all = 0
-        total_duty_minutes_all = 0
+        total_off_days = 0
+
+        prior_day_end_time = None  # last day end time
 
         for leg_date in sorted(available_dates):
             legs_today = []
-            daily_flight_total = 0
-            first_dep_minute = None
-            last_arr_minute = None
-
+            total_flight = 0
             num_legs = random.randint(1, max_legs)
+            max_duty_for_day = 840 if num_legs <= 4 else 720
+
+            dep_minute_of_day = 360  # start ~6am
+
             for _ in range(num_legs):
+                if total_flight >= max_flight_minutes:
+                    break
+
                 dep_airport = last_arrival
                 arr_choices = [a for a in airports if a != dep_airport]
                 if include_airports:
@@ -144,16 +149,10 @@ def home():
                 arr_airport = random.choice(arr_choices)
                 flight_time = random.randint(60, 300)
 
-                if daily_flight_total + flight_time > max_flight_minutes:
+                if total_flight + flight_time > max_flight_minutes:
                     break
 
-                dep_minute_of_day = 360 + daily_flight_total + random.randint(0, 30)  # spread slightly random
                 arr_minute_of_day = dep_minute_of_day + flight_time
-
-                if first_dep_minute is None or dep_minute_of_day < first_dep_minute:
-                    first_dep_minute = dep_minute_of_day
-                if last_arr_minute is None or arr_minute_of_day > last_arr_minute:
-                    last_arr_minute = arr_minute_of_day
 
                 leg = {
                     'day': day_counter,
@@ -167,15 +166,19 @@ def home():
                 }
                 legs_today.append(leg)
 
-                daily_flight_total += flight_time
+                total_flight += flight_time
+                dep_minute_of_day = arr_minute_of_day + 60  # add ~1h turn time
                 last_arrival = arr_airport
 
             if legs_today:
-                daily_duty_total = last_arr_minute - first_dep_minute
-
                 total_legs_count += len(legs_today)
-                total_flight_minutes_all += daily_flight_total
-                total_duty_minutes_all += daily_duty_total
+                total_flight_minutes_all += total_flight
+
+                # Calculate prior rest:
+                if prior_day_end_time is not None:
+                    prior_rest_minutes = max(0, (360 + 24 * 60) - prior_day_end_time)  # next day 6am start - last day end
+                else:
+                    prior_rest_minutes = 720  # first day, assume 12h
 
                 trip.append({
                     'day': day_counter,
@@ -184,11 +187,14 @@ def home():
                     'aircraft': '',
                     'dep': '',
                     'arr': '',
-                    'dep_time': f'Flight: {format_minutes(daily_flight_total)}',
-                    'arr_time': f'Duty: {format_minutes(daily_duty_total)}',
-                    'total_legs': len(legs_today)
+                    'dep_time': f'Flight: {format_minutes(total_flight)}',
+                    'arr_time': f'Duty: {format_minutes(total_flight + 60 * len(legs_today))}',
+                    'total_legs': len(legs_today),
+                    'prior_rest': format_minutes(prior_rest_minutes)
                 })
+
                 trip.extend(legs_today)
+                prior_day_end_time = arr_minute_of_day
             else:
                 trip.append({
                     'day': day_counter,
@@ -200,8 +206,12 @@ def home():
                     'dep_time': 'OFF',
                     'arr_time': 'OFF'
                 })
+                prior_day_end_time = None  # reset if off day
+                total_off_days += 1
 
             day_counter += 1
+
+        total_duty_minutes_all = total_flight_minutes_all + total_legs_count * 60
 
         summary = {
             'total_legs': total_legs_count,
