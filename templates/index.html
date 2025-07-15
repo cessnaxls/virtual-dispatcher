@@ -90,6 +90,7 @@
         <button type="submit" class="btn btn-primary">Generate Trip Schedule</button>
     </form>
 
+
     {% if trip %}
     <table class="table mt-4">
         <thead>
@@ -135,6 +136,20 @@
             {% endfor %}
         </tbody>
     </table>
+    {% endif %}
+
+    {% if summary %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <strong>Weekly / Monthly Summary</strong>
+        </div>
+        <div class="card-body">
+            <p>Total Legs: {{ summary.total_legs }}</p>
+            <p>Total Flight Time: {{ summary.total_flight }}</p>
+            <p>Total Duty Time: {{ summary.total_duty }}</p>
+            <p>OFF Days: {{ summary.off_days }}</p>
+        </div>
+    </div>
     {% endif %}
 </body>
 </html>
