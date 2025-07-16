@@ -1,8 +1,8 @@
-from flask import Flask, render_template, request, send_file
-from weasyprint import HTML
+from flask import Flask, render_template, request, make_response
+import pdfkit
 import random
 import datetime
-import io
+
 
 app = Flask(__name__)
 
@@ -62,22 +62,22 @@ ICAO_AIRCRAFT_TYPES = [
     'YS11'
 ]
 
+
 def format_minutes(minutes):
     hours = minutes // 60
     mins = minutes % 60
     return f"{hours:02d}:{mins:02d}"
 
-# STORE last trip + summary globally
-last_trip = []
-last_summary = {}
+# Global storage for trip and summary
+trip_data = []
+summary_data = {}
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    global last_trip, last_summary
+    global trip_data, summary_data
 
     trip = []
     airports = ['IND', 'ATL', 'DFW', 'ORD', 'CLT']
-
     FAA_7DAY_LIMIT = 1800  # 30h
     FAA_28DAY_LIMIT = 6000  # 100h
 
@@ -126,11 +126,9 @@ def home():
 
         day_counter = 1
         last_arrival = initial_departure if initial_departure else random.choice(airports)
-
         total_legs_count = 0
         total_flight_minutes_all = 0
         total_off_days = 0
-
         prior_day_end_time = None
         day_flight_times = {}
 
@@ -147,14 +145,9 @@ def home():
 
             if rolling_7day >= FAA_7DAY_LIMIT or rolling_28day >= FAA_28DAY_LIMIT:
                 trip.append({
-                    'day': day_counter,
-                    'date': leg_date.strftime('%Y-%m-%d'),
-                    'airline': 'OFF',
-                    'aircraft': 'OFF',
-                    'dep': 'OFF',
-                    'arr': 'OFF',
-                    'dep_time': 'OFF',
-                    'arr_time': 'OFF'
+                    'day': day_counter, 'date': leg_date.strftime('%Y-%m-%d'),
+                    'airline': 'OFF', 'aircraft': 'OFF', 'dep': 'OFF',
+                    'arr': 'OFF', 'dep_time': 'OFF', 'arr_time': 'OFF'
                 })
                 total_off_days += 1
                 prior_day_end_time = None
@@ -163,7 +156,6 @@ def home():
                 continue
 
             dep_minute_of_day = 360
-
             for _ in range(num_legs):
                 if total_flight >= max_flight_minutes:
                     break
@@ -187,12 +179,9 @@ def home():
                 arr_minute_of_day = dep_minute_of_day + flight_time
 
                 leg = {
-                    'day': day_counter,
-                    'date': '',
-                    'airline': random.choice(airlines),
-                    'aircraft': random.choice(aircraft),
-                    'dep': dep_airport,
-                    'arr': arr_airport,
+                    'day': day_counter, 'date': '',
+                    'airline': random.choice(airlines), 'aircraft': random.choice(aircraft),
+                    'dep': dep_airport, 'arr': arr_airport,
                     'dep_time': format_minutes(dep_minute_of_day),
                     'arr_time': format_minutes(arr_minute_of_day)
                 }
@@ -211,12 +200,8 @@ def home():
                 prior_day_end_time = arr_minute_of_day
 
                 trip.append({
-                    'day': day_counter,
-                    'date': leg_date.strftime('%Y-%m-%d'),
-                    'airline': 'SUMMARY',
-                    'aircraft': '',
-                    'dep': '',
-                    'arr': '',
+                    'day': day_counter, 'date': leg_date.strftime('%Y-%m-%d'),
+                    'airline': 'SUMMARY', 'aircraft': '', 'dep': '', 'arr': '',
                     'dep_time': f'Flight: {format_minutes(total_flight)}',
                     'arr_time': f'Duty: {format_minutes(total_flight + len(legs_today) * 60)}',
                     'total_legs': len(legs_today),
@@ -228,14 +213,9 @@ def home():
                 total_off_days += 1
                 day_flight_times[leg_date] = 0
                 trip.append({
-                    'day': day_counter,
-                    'date': leg_date.strftime('%Y-%m-%d'),
-                    'airline': 'OFF',
-                    'aircraft': 'OFF',
-                    'dep': 'OFF',
-                    'arr': 'OFF',
-                    'dep_time': 'OFF',
-                    'arr_time': 'OFF'
+                    'day': day_counter, 'date': leg_date.strftime('%Y-%m-%d'),
+                    'airline': 'OFF', 'aircraft': 'OFF', 'dep': 'OFF', 'arr': 'OFF',
+                    'dep_time': 'OFF', 'arr_time': 'OFF'
                 })
 
             day_counter += 1
@@ -251,9 +231,8 @@ def home():
             'off_days': total_off_days
         }
 
-        # STORE for PDF export
-        last_trip = trip
-        last_summary = summary
+        trip_data = trip
+        summary_data = summary
 
     else:
         summary = None
@@ -263,9 +242,11 @@ def home():
                            ICAO_AIRCRAFT_TYPES=ICAO_AIRCRAFT_TYPES,
                            summary=summary)
 
-# PDF EXPORT ROUTE
 @app.route('/export_pdf')
 def export_pdf():
-    html = render_template('pdf_template.html', trip=last_trip, summary=last_summary)
-    pdf = HTML(string=html).write_pdf()
-    return send_file(io.BytesIO(pdf), mimetype='application/pdf', as_attachment=True, download_name='trip_schedule.pdf')
+    html = render_template('pdf_template.html', trip=trip_data, summary=summary_data)
+    pdf = pdfkit.from_string(html, False)
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=trip_schedule.pdf'
+    return response

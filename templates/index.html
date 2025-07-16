@@ -90,6 +90,12 @@
         <button type="submit" class="btn btn-primary">Generate Trip Schedule</button>
     </form>
 
+    {% if trip %}
+    <div class="text-end mt-3">
+        <a href="/export_pdf" class="btn btn-success">Download Schedule as PDF</a>
+    </div>
+    {% endif %}
+
     {% if summary %}
     <div class="card mt-4">
         <div class="card-header">
@@ -103,10 +109,6 @@
             <p><strong>Rolling 28-Day Flight Time (FAA):</strong> {{ summary.rolling_28day }}</p>
             <p><strong>Total OFF Days:</strong> {{ summary.off_days }}</p>
         </div>
-    </div>
-
-    <div class="text-end">
-        <a href="/export_pdf" class="btn btn-success mt-2">Download Schedule as PDF</a>
     </div>
     {% endif %}
 
