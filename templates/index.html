@@ -68,6 +68,14 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="mb-3">
+            <label for="max_duty_hours" class="form-label">Max Duty Hours per Day:</label>
+            <select id="max_duty_hours" name="max_duty_hours" class="form-select">
+                {% for n in range(8, 15) %}
+                <option value="{{ n }}">{{ n }} hrs</option>
+                {% endfor %}
+            </select>
+        </div>
 
         <!-- Airline & aircraft selection -->
         <div class="mb-3">
