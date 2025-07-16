@@ -8,6 +8,16 @@
     <h1 class="mb-4">Trip Rig Dispatcher</h1>
 
     <form method="POST">
+        <!-- Email + SimBrief -->
+        <div class="mb-3">
+            <label for="email" class="form-label">Your Email Address:</label>
+            <input type="email" id="email" name="email" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="simbrief_id" class="form-label">SimBrief Pilot ID:</label>
+            <input type="text" id="simbrief_id" name="simbrief_id" class="form-control" required>
+        </div>
+
         <!-- Date inputs -->
         <div class="mb-3">
             <label for="start_date" class="form-label">Available From (Start Date):</label>
@@ -58,14 +68,6 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="mb-3">
-            <label for="max_duty_hours" class="form-label">Max Duty Hours per Day:</label>
-            <select id="max_duty_hours" name="max_duty_hours" class="form-select">
-                {% for n in range(6, 17) %}
-                <option value="{{ n }}">{{ n }} hrs</option>
-                {% endfor %}
-            </select>
-        </div>
 
         <!-- Airline & aircraft selection -->
         <div class="mb-3">
@@ -93,6 +95,8 @@
     {% if trip %}
     <div class="text-end mt-3">
         <a href="/export_pdf" class="btn btn-success">Download Schedule as PDF</a>
+        <a href="/send_summary_now" class="btn btn-warning">Simulate Send Summary Email</a>
+        <a href="/send_ofp_now" class="btn btn-danger">Simulate Send SimBrief OFPs</a>
     </div>
     {% endif %}
 
@@ -116,7 +120,6 @@
     <table class="table mt-4">
         <thead>
             <tr>
-                <th>Day</th>
                 <th>Date</th>
                 <th>Airline / Total Legs</th>
                 <th>Aircraft</th>
@@ -130,7 +133,6 @@
         <tbody>
             {% for leg in trip %}
             <tr class="{% if leg.airline == 'OFF' %}table-secondary{% elif leg.airline == 'SUMMARY' %}table-primary{% endif %}">
-                <td>{{ leg.day }}</td>
                 <td>{{ leg.date }}</td>
                 <td>
                     {% if leg.airline == 'SUMMARY' %}
