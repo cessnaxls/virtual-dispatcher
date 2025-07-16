@@ -20,7 +20,7 @@ mail = Mail(app)
 scheduler = BackgroundScheduler()
 scheduler.start()
 
-TEST_MODE = false  # Set False for live
+TEST_MODE = False  # Set False for live
 user_email = 'test@example.com'
 simbrief_pilot_id = 'TEST123'
 
