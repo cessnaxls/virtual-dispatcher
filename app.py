@@ -1,17 +1,14 @@
 from flask import Flask, render_template, request, make_response
+from flask_mail import Mail, Message
 from weasyprint import HTML
+from apscheduler.schedulers.background import BackgroundScheduler
 import random
 import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
-
-
-TEST_MODE = True  # Set to False when you want real emails / SimBrief calls
+import requests
 
 app = Flask(__name__)
 
-scheduler = BackgroundScheduler()
-
-
+# --- CONFIG ---
 app.config.update(
     MAIL_SERVER='smtp.yourmailserver.com',
     MAIL_PORT=587,
@@ -19,29 +16,14 @@ app.config.update(
     MAIL_USERNAME='your_username',
     MAIL_PASSWORD='your_password'
 )
-
 mail = Mail(app)
+scheduler = BackgroundScheduler()
+scheduler.start()
 
-def send_real_email(subject, recipients, body):
-    msg = Message(subject, recipients=[recipients], body=body)
-    mail.send(msg)
+TEST_MODE = True  # Set False for live
+user_email = 'test@example.com'
+simbrief_pilot_id = 'TEST123'
 
-
-def call_simbrief_api(leg):
-    payload = {
-        'userid': simbrief_pilot_id,
-        'airline': leg['airline'],
-        'flightnum': leg['flight_number'],
-        'depicao': leg['dep'],
-        'arricao': leg['arr'],
-        'etd': leg['dep_time'],
-        'aircraft': leg['aircraft'],
-    }
-    response = requests.post('https://www.simbrief.com/api/xml.fetcher.php', data=payload)
-    if response.status_code == 200:
-        return response.content  # or handle OFP file
-    else:
-        print(f"SimBrief error: {response.status_code}")
 NA_ICAO_AIRLINES = [
     'AAH', 'AAL', 'AAY', 'ABK', 'ABX', 'ACA', 'ADS', 'AER', 'AIE', 'AIP', 'AJI',
     'AJT', 'AKN', 'AKT', 'AMF', 'AMX', 'ANT', 'ARQ', 'ASA', 'ASB', 'ASH', 'ASP',
@@ -304,49 +286,68 @@ def export_pdf():
     response.headers['Content-Disposition'] = 'attachment; filename=trip_schedule.pdf'
     return response
 
-def send_summary_email():
+# --- HELPERS ---
+def format_minutes(minutes):
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02d}:{mins:02d}"
+
+last_trip = []
+last_summary = {}
+
+
+
+@app.route('/export_pdf')
+def export_pdf():
+    html = render_template('pdf_template.html', trip=last_trip, summary=last_summary)
+    pdf = HTML(string=html).write_pdf()
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=trip_schedule.pdf'
+    return response
+
+# --- EMAIL + SIMBRIEF FUNCTIONS ---
+def send_real_email(subject, recipients, body):
     if TEST_MODE:
-        print("[TEST MODE] Sending next-day schedule summary email to you@example.com")
-        # Here you would format the summary and print to console
-        print("[SUMMARY DATA]:", last_summary)
+        print(f"[TEST EMAIL] To: {recipients}\nSubject: {subject}\n{body}")
     else:
-        # Here put real email sending code (e.g., using smtplib or Flask-Mail)
-        pass
+        msg = Message(subject, recipients=[recipients], body=body)
+        mail.send(msg)
 
 def scheduled_daily_summary():
-    if TEST_MODE:
-        print("[DAILY TEST] Running daily summary at 0000z")
-    send_summary_email()
+    if not last_trip:
+        print("[INFO] No trip to summarize")
+        return
+    tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+    summary = [f"{l['airline']} {l['dep']}->{l['arr']} ETD {l['dep_time']}" for l in last_trip if l['date'] == tomorrow]
+    body = "\n".join(summary) if summary else "OFF DAY"
+    send_real_email(f"Tomorrow's Schedule", user_email, body)
 
-scheduler.add_job(scheduled_daily_summary, 'cron', hour=0, minute=0)
-scheduler.start()
-
-def send_simbrief_ofps():
+def send_simbrief_ofp_for_leg(leg):
     if TEST_MODE:
-        print("[TEST MODE] Sending SimBrief OFPs for tomorrow's flights")
-        for leg in last_trip:
-            if leg['airline'] != 'SUMMARY' and leg['airline'] != 'OFF':
-                print(f"[SIMBRIEF CALL] Airline: {leg['airline']}, Flight: {leg.get('flight_number', 'N/A')}, Tail: {leg.get('tail_number', 'N/A')}, {leg['dep']} → {leg['arr']}, ETD: {leg['dep_time']}")
+        print(f"[SIMBRIEF TEST] {leg['airline']} {leg['dep']}->{leg['arr']} ETD {leg['dep_time']}")
     else:
-        # Here put real SimBrief API integration code
-        pass
-        
-def schedule_ofp_for_leg(leg):
-    dep_time_str = leg['dep_time']  # e.g., '08:00'
-    dep_time = datetime.datetime.strptime(dep_time_str, '%H:%M').time()
-    one_hour_before = (datetime.datetime.combine(datetime.date.today(), dep_time) 
-                       - datetime.timedelta(hours=1)).time()
-
-    scheduler.add_job(lambda: send_simbrief_ofp_for_leg(leg), 'cron', 
-                      hour=one_hour_before.hour, minute=one_hour_before.minute)
-
+        payload = {'userid': simbrief_pilot_id, 'airline': leg['airline'], 'depicao': leg['dep'], 'arricao': leg['arr']}
+        requests.post('https://www.simbrief.com/api/xml.fetcher.php', data=payload)
+        send_real_email(f"OFP {leg['airline']} {leg['dep']}->{leg['arr']}", user_email, "OFP generated.")
 
 @app.route('/send_summary_now')
 def send_summary_now():
-    send_summary_email()
-    return "✅ Summary email simulated (check server log / console)"
+    scheduled_daily_summary()
+    return "✅ Summary email simulated"
 
 @app.route('/send_ofp_now')
 def send_ofp_now():
-    send_simbrief_ofps()
-    return "✅ SimBrief OFPs simulated (check server log / console)"
+    for leg in last_trip:
+        send_simbrief_ofp_for_leg(leg)
+    return "✅ SimBrief OFPs simulated"
+
+# --- SCHEDULE JOBS ---
+scheduler.add_job(scheduled_daily_summary, 'cron', hour=0, minute=0)
+for leg in last_trip:
+    dep_hour = int(leg['dep_time'].split(':')[0]) - 1  # one hour before
+    dep_min = int(leg['dep_time'].split(':')[1])
+    scheduler.add_job(lambda leg=leg: send_simbrief_ofp_for_leg(leg), 'cron', hour=dep_hour, minute=dep_min)
+
+if __name__ == '__main__':
+    app.run(debug=True)
