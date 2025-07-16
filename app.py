@@ -295,17 +295,6 @@ def format_minutes(minutes):
 last_trip = []
 last_summary = {}
 
-
-
-@app.route('/export_pdf')
-def export_pdf():
-    html = render_template('pdf_template.html', trip=last_trip, summary=last_summary)
-    pdf = HTML(string=html).write_pdf()
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = 'attachment; filename=trip_schedule.pdf'
-    return response
-
 # --- EMAIL + SIMBRIEF FUNCTIONS ---
 def send_real_email(subject, recipients, body):
     if TEST_MODE:
