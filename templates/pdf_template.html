@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trip Schedule PDF</title>
+    <style>
+        body { font-family: sans-serif; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #333; padding: 4px; text-align: center; }
+        th { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Trip Schedule Summary</h1>
+    <p><strong>Total Legs:</strong> {{ summary.total_legs }}</p>
+    <p><strong>Total Flight Time:</strong> {{ summary.total_flight }}</p>
+    <p><strong>Total Duty Time:</strong> {{ summary.total_duty }}</p>
+    <p><strong>Rolling 7-Day Flight Time:</strong> {{ summary.rolling_7day }}</p>
+    <p><strong>Rolling 28-Day Flight Time:</strong> {{ summary.rolling_28day }}</p>
+    <p><strong>OFF Days:</strong> {{ summary.off_days }}</p>
+
+    <h2>Trip Details</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Date</th>
+                <th>Airline</th>
+                <th>Aircraft</th>
+                <th>Dep</th>
+                <th>Arr</th>
+                <th>Dep Time</th>
+                <th>Arr Time</th>
+                <th>Prior Rest</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for leg in trip %}
+            <tr>
+                <td>{{ leg.day }}</td>
+                <td>{{ leg.date }}</td>
+                <td>{{ leg.airline }}</td>
+                <td>{{ leg.aircraft }}</td>
+                <td>{{ leg.dep }}</td>
+                <td>{{ leg.arr }}</td>
+                <td>{{ leg.dep_time }}</td>
+                <td>{{ leg.arr_time }}</td>
+                <td>{{ leg.prior_rest if leg.airline == 'SUMMARY' else '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
