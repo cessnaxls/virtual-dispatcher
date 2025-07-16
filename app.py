@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, make_response
-import pdfkit
+from weasyprint import HTML
 import random
 import datetime
 
@@ -257,10 +257,11 @@ def home():
                            ICAO_AIRCRAFT_TYPES=ICAO_AIRCRAFT_TYPES,
                            summary=summary)
 
+
 @app.route('/export_pdf')
 def export_pdf():
     html = render_template('pdf_template.html', trip=last_trip, summary=last_summary)
-    pdf = pdfkit.from_string(html, False)
+    pdf = HTML(string=html).write_pdf()
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'attachment; filename=trip_schedule.pdf'
